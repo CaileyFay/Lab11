@@ -125,6 +125,11 @@ acc_train
 Now the real test. We evaluate this model on passengers it has never seen, using titanic_test. Notice the crucial difference: we pass newdata = titanic_test to predict(). This forces the model to make predictions for passengers that played no role in fitting its coefficients.
 
 ```{r exercise2.3_code}
+survived <- titanic3 %>%
+  select(c("name","survived"))
+
+titanic_test <- merge(survived, titanic_test, by = "name")
+
 p_test <- predict(m_split,
                   newdata = titanic_test,
                   type = "response")
@@ -142,7 +147,7 @@ acc_test
 acc_train is bigger with 891 obeservations, and the test is on 418 observations. Having more data = better model, so you want to maximize the number of observations used to train the data, while keeping enough data to test on. 
 
 2. Which estimate is closer to what Lloyd’s actually needs — a measure of how well the model explains past data, or how well it predicts future passengers?
-We didn't get an accuracy value for the titanic_test dataset, so we don't know. 
+Lloyd needs the estimate of how it predicts past passengers, so the .78 is better. We don't plan on having another titanic situation, and we aren't trying to use the model to make predictions on a different dataset.
 
 3. If acc_test happened to be higher than acc_train, would that invalidate the logic of holdout testing? Explain.
 Yes. The point of holdout testing is to have a bigger training dataset so that you have a good model, and then having a smaller thing to test it out on. Like the leave-one-out cross validation that happens in some fmri studies when they are training and testing a classifier. 
@@ -249,3 +254,43 @@ for (i in seq_along(cutoffs)) {
 cutoff_results
 
 ```
+
+## Exercise 4.2 
+
+```{r exercise4.2_code}
+
+cutoffs_fine <- seq(0.1, 0.9, by = 0.05)
+
+cutoff_results_fine <- data.frame(
+  cutoff = cutoffs_fine,
+  accuracy = NA_real_
+)
+
+for (i in seq_along(cutoffs_fine)) {
+  c0 <- cutoffs_fine[i]
+  yhat_c <- ifelse(p_test > c0, 1, 0)
+  cutoff_results_fine$accuracy[i] <- mean(yhat_c == titanic_test$survived, na.rm = TRUE)
+}
+
+ggplot(cutoff_results_fine, aes(x = cutoff, y = accuracy)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Test Accuracy Across Probability Cutoffs",
+    x = "Cutoff",
+    y = "Accuracy"
+  ) +
+  theme_minimal()
+
+```
+
+## Exercise 4.3 Reflection 
+
+1. Which cutoff maximized accuracy here? .75 is best for this sample. 
+
+2. Why might accuracy be a poor criterion for selecting a cutoff in underwriting? Think about what happens when the costs of false positives and false negatives differ. 
+If the costs are weighted differently, you need to decide which has the worst outcome. False negative is the most awful? Go with a higher cutoff. False positive is worse? Go with a more conservative cutoff. 
+
+3. Name one alternative metric you would want if false positives and false negatives had different costs. (Hint: think about sensitivity, specificity, or expected cost.)
+
+The metric is going to depend on the nature of the thing the model is making predictions about. In cancer screenings, a false negative would be awful, whereas a false positive isn't so bad, so in these sorts of instances, you should go with sensitivity. In a scenario where you want to maximize true negatives (i.e. people who didn't die on the titanic), then you should go with specificity. 
